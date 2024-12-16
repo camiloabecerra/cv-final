@@ -20,6 +20,9 @@ defense_units_3 = [pitch_length/5, pitch_width/4]
 midfield_units_3 = [pitch_length/2, pitch_width/5]
 attack_units_3 = [pitch_length/1.25, pitch_width/4]
 
+player_coords_path = "data/"
+player_coords = []
+
 formations = {
     "4-4-2": [
         # Keeper
@@ -91,5 +94,5 @@ def identify_formation(player_coords, formation_coords, pitch_length, pitch_widt
     return best_formation, best_score
 
 def main():
-    best_formation, best_score = identify_formation(???, formations, pitch_length, pitch_width)
+    best_formation, best_score = identify_formation(player_coords, formations, pitch_length, pitch_width)
     print(best_formation, best_score)
