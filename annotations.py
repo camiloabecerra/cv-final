@@ -1,4 +1,4 @@
-from ultralytics import YOLO, Annotator
+from ultralytics import YOLO
 import cv2
 from team_assignments import Detector
 
@@ -11,18 +11,18 @@ height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
 fps = int(capture.get(cv2.CAP_PROP_FPS))
 
 output = cv2.VideoWriter("annotated_videos/video2_annotated.mp4", cv2.VideoWriter_fourcc(*'mp4v'), fps, (width,height))
+ball_pos = []
 
 while capture.isOpened():
     ret, frame = capture.read()
     if not ret:
         break
 
-    # classifier = Detector("images/football.png", model)
-    # teams = classifier.assign_teams()
+    classifier = Detector(frame, model)
+    ball_pos += classifier.ball
+    classifier.annotate_img()
 
-    annotated_frame = model.predict(frame, conf=0.1)[0].plot()
-
-    output.write(annotated_frame)
+    output.write(classifier.img)
 
 capture.release()
 output.release()
