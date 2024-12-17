@@ -110,6 +110,9 @@ def main():
 
         for team_id, players in team_assignments.items():
             for i, player in enumerate(players):
+                if i >= len(team_speeds[team_id]):
+                    print(f"skipping player {i} in team {team_id} due to incompatible speed data")
+                    continue
                 x = int((player[2]+player[0]) // 2)
                 y = int((player[3]+player[1]) // 2)
                 speed = team_speeds[team_id][i]
