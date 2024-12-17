@@ -27,9 +27,11 @@ while capture.isOpened():
     ball_pos += classifier.ball
     classifier.annotate_img()
 
+    print(ball_pos)
+
     if teams == []:
         teams = classifier.teams
-
+    
     output.write(classifier.img)
 
 capture.release()
