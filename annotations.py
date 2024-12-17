@@ -18,13 +18,12 @@ def interpolate_ball_positions(ball_positions):
         List of interpolated ball prediction dictionaries
     """
 
-    ball_positions = [x.get(1, {}).get('bbox', []) for x in ball_positions]
-    df_ball_positions = pd.DataFrame(ball_positions, columns = ['x1', 'y1', 'x2','y2'])
+    df_ball_positions = pd.DataFrame(ball_positions, columns = ['x','y'])
 
     # interpolate missing values
-    df_ball_positions = df_ball_positions.interpolate().bfill()
+    df_ball_positions = df_ball_positions.interpolate(method='linear').bfill()
 
-    ball_positions = [{1: {"bbox": x}} for x in df_ball_positions.to_numpy().toList()]
+    ball_positions = df_ball_positions.to_nump().tolist()
 
     return ball_positions
 
