@@ -30,7 +30,7 @@ while capture.isOpened():
     if teams == []:
         teams = classifier.teams
 
-    output.write(classifier.img[:,:,0])
+    output.write(classifier.img)
 
 capture.release()
 output.release()
