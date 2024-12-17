@@ -25,7 +25,21 @@ while capture.isOpened():
     else:
         classifier = Detector(frame, model, teams)
 
+    team0_ppositions = []
+    team1_ppositions = []
+    for t0p, t1p in zip(classifier.assign_teams()[0], classifier.assign_teams()[1]):
+        t0x = int((t0p[2]+t0p[0])//2)
+        t0y = int((t0p[3]+t0p[1])//2)
+        team0_ppositions.append([t0x,t0y])
+
+        t1x = int((t1p[2]+t1p[0])//2)
+        t1y = int((t1p[3]+t1p[1])//2)
+        team1_ppositions.append([t1x,t1y])
+
     ball_pos += classifier.ball
+    team_positions[0].append(team0_ppositions)
+    team_positions[1].append(team1_ppositions)
+
     classifier.annotate_img()
 
     if teams == []:
@@ -33,7 +47,7 @@ while capture.isOpened():
 
     output.write(classifier.img)
 
-print(ball_pos)
+print(team_positions)
 
 capture.release()
 output.release()
