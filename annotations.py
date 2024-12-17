@@ -2,6 +2,7 @@ from ultralytics import YOLO
 import cv2
 import pandas as pd
 from team_assignments import Detector
+import numpy as np
 
 def interpolate_ball_positions(ball_positions):
     """
@@ -26,6 +27,25 @@ def interpolate_ball_positions(ball_positions):
     ball_positions = df_ball_positions.to_nump().tolist()
 
     return ball_positions
+
+def calculate_speed(team_positions, fps):
+    team_speeds = {0: [], 1: []}
+    for team_id, positions in team_positions.items():
+        speeds = []
+        for player_positions in zip(*positions):
+            total_distance = 0
+            for i in range(1, len(player_positions)):
+                x1, y1 = player_positions[i-1]
+                x2, y2 = player_positions[i]
+                distance = np.sqrt((x2-x1)**2 + (y2-y1)**2)
+                total_distance += distance
+            speed = (total_distance / len(player_positions)) * fps if len(player_positions) > 1 else 0
+            speeds.append(speed)
+        team_speeds[team_id] = speeds
+    return team_speeds
+
+
+
 
 def main():
     model = YOLO("yolo/finetuned.pt")
@@ -54,6 +74,8 @@ def main():
 
         ball_pos += classifier.ball
         classifier.annotate_img()
+        if teams == []:
+            teams = classifier.teams
 
         team0_ppositions = []
         team1_ppositions = []
@@ -69,6 +91,15 @@ def main():
         ball_pos += classifier.ball
         team_positions[0].append(team0_ppositions)
         team_positions[1].append(team1_ppositions)
+
+        team_speeds = calculate_speed(team_positions, fps)
+
+        for team_id, players in enumerate(classifier.assign_teams()):
+            for i, player in enumerate(players):
+                x = int((player[2]+player[0]) // 2)
+                y = int((player[3]+player[1]) // 2)
+                speed = team_speeds[team_id][i]
+                cv2.putText(classifier.img, f"{speed:.2f} px/s", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255),2)
 
         classifier.annotate_img()
         if teams == []:

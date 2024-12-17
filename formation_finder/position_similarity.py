@@ -96,3 +96,6 @@ def identify_formation(player_coords, formation_coords, pitch_length, pitch_widt
 def main():
     best_formation, best_score = identify_formation(player_coords, formations, pitch_length, pitch_width)
     print(best_formation, best_score)
+
+if __name__ == "__main__":
+    main()
