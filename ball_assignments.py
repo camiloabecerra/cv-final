@@ -19,19 +19,21 @@ class PlayerBallAssigner():
         for ball_id, ball_pos in enumerate(ball_positions):
             min_distance = float("inf")
             assigned_team = -1
-            assigned_player_idx = -1
 
             # find player closest to the ball 
             for team_id, player_arr in players.items():
-                for i in range(0, len(player_arr), 2): 
-                    player_pos = [player_arr[i], player_arr[i+1]]
+                print("team_id: ", team_id)
+                print("player_array: ", player_arr)
+                # if len(player_arr) < 2 or len(player_arr) % 2 != 0:
+                #     print(f"Skipping team {team_id} due to incomplete player data: {player_arr}")
+                #     continue
 
+                for player_pos in player_arr[-1]:
                     # measure distance between player and the ball
                     distance = self.measure_distance(player_pos, ball_pos)
                     if distance < self.max_player_ball_distance and distance < min_distance:
                         min_distance = distance 
                         assigned_team = team_id 
-                        assigned_player_idx = i // 2 # index of the player in the team list
         
-        ball_assignments[ball_id] = (assigned_team, assigned_player_idx)
+        ball_assignments[ball_id] = assigned_team
         return ball_assignments

@@ -47,7 +47,6 @@ def calculate_speed(team_positions, fps):
         team_speeds[team_id] = speeds
     return team_speeds
 
-
 def update_team_positions(team_positions, team_assignments):
     for team_id, players in team_assignments.items():
         frame_positions = []
@@ -76,14 +75,41 @@ def process_frame(frame, model, teams, team_positions, ball_pos, fps):
     else:
         classifier = Detector(frame, model, teams)
 
+    # update ball positions
     ball_pos += classifier.ball
+
+    # assign team if not already assigned
     if not teams:
         teams = classifier.teams
     
     team_assignments = classifier.assign_teams()
 
+    # update team positions to calculate speeds 
     team_positions = update_team_positions(team_positions, team_assignments)
     team_speeds = calculate_speed(team_positions, fps)
+    # print("HERE: ", classifier.ball)
+
+    # assign ball possession 
+    if classifier.ball:
+        assigner = PlayerBallAssigner()
+        assignments = assigner.assign_ball_to_player(team_positions, classifier.ball)
+
+        for ball_id, team_id in assignments.items():
+            if team_id != -1:
+                # Annotate possession on the frame
+                x = int(classifier.ball[ball_id][0])
+                y = int(classifier.ball[ball_id][1])
+                cv2.putText(
+                    classifier.img,
+                    f"Ball {ball_id}: Team {team_id}",
+                    (x, y - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    (0, 255, 0),  # Green text
+                    2,
+                )
+
+    # annotate speeds on each frame 
     frame = annotate_speeds(classifier.img, team_assignments, team_speeds)
 
     classifier.annotate_img()
