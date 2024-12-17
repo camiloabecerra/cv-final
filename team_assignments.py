@@ -27,7 +27,13 @@ class Detector:
 
         # store players and ball positions 
         self.players = list(filter(lambda elt: self.detection.names[int(elt[5])] == "player", self.detection.boxes.data))
-        self.ball = list(filter(lambda elt: self.detection.names[int(elt[5])] == "ball", self.detection.boxes.data))
+        self.ball = []
+        for b in list(filter(lambda elt: self.detection.names[int(elt[5])] == "ball", self.detection.boxes.data)):
+            x = int((b[2]+b[0])//2)
+            y = int((b[3]+b[0])//2)
+            b = [x,y]
+
+            self.ball.append(b)
 
         # if more than two players are detected, assign the players into teams 
         if len(self.players) >= 2:
