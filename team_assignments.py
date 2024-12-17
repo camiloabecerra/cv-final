@@ -10,7 +10,13 @@ class Detector:
         self.teams = team_centroids
         self.detection = model.predict(self.img, conf=0.1)[0]
         self.players = list(filter(lambda elt: self.detection.names[int(elt[5])] == "player", self.detection.boxes.data))
-        self.ball = list(filter(lambda elt: self.detection.names[int(elt[5])] == "ball", self.detection.boxes.data))
+        self.ball = []
+        for b in list(filter(lambda elt: self.detection.names[int(elt[5])] == "ball", self.detection.boxes.data)):
+            x = int((b[2]+b[0])//2)
+            y = int((b[3]+b[0])//2)
+            b = [x,y]
+
+            self.ball.append(b)
 
         if len(self.players) >= 2:
             self.team_players = self.assign_teams()

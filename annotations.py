@@ -13,6 +13,7 @@ fps = int(capture.get(cv2.CAP_PROP_FPS))
 output = cv2.VideoWriter("annotated_videos/video3_annotated.mp4", cv2.VideoWriter_fourcc(*'mp4v'), fps, (width,height))
 ball_pos = []
 teams = []
+team_positions = {0:[],1:[]}
 
 while capture.isOpened():
     ret, frame = capture.read()
@@ -31,6 +32,8 @@ while capture.isOpened():
         teams = classifier.teams
 
     output.write(classifier.img)
+
+print(ball_pos)
 
 capture.release()
 output.release()
