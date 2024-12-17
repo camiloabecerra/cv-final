@@ -1,8 +1,11 @@
 from ultralytics import YOLO
 import cv2
 import pandas as pd
-from team_assignments import Detector
 import numpy as np
+
+from team_assignments import Detector
+from ball_assignments import PlayerBallAssigner
+
 
 def interpolate_ball_positions(ball_positions):
     """
@@ -45,18 +48,58 @@ def calculate_speed(team_positions, fps):
     return team_speeds
 
 
+def update_team_positions(team_positions, team_assignments):
+    for team_id, players in team_assignments.items():
+        frame_positions = []
+        for player in players:
+            x = int((player[2]+player[0])//2)
+            y = int((player[3]+player[1])//2)
+            frame_positions.append([x,y])
+        team_positions[team_id].append(frame_positions)
+    return team_positions
+
+def annotate_speeds(frame, team_assignments, team_speeds):
+    for team_id, players in team_assignments.items():
+        for i, player in enumerate(players):
+            if i >= len(team_speeds[team_id]):
+                print(f"skipping player {i} in team {team_id} due to incompatible speed data")
+                continue
+            x = int((player[2]+player[0]) // 2)
+            y = int((player[3]+player[1]) // 2)
+            speed = team_speeds[team_id][i]
+            cv2.putText(frame, f"{speed:.2f} px/s", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255),2)
+    return frame
+
+def process_frame(frame, model, teams, team_positions, ball_pos, fps):
+    if teams == []:
+            classifier = Detector(frame, model)
+    else:
+        classifier = Detector(frame, model, teams)
+
+    ball_pos += classifier.ball
+    if not teams:
+        teams = classifier.teams
+    
+    team_assignments = classifier.assign_teams()
+
+    team_positions = update_team_positions(team_positions, team_assignments)
+    team_speeds = calculate_speed(team_positions, fps)
+    frame = annotate_speeds(classifier.img, team_assignments, team_speeds)
+
+    classifier.annotate_img()
+    return teams, team_positions, ball_pos, classifier.img
 
 
 def main():
     model = YOLO("yolo/finetuned.pt")
-    path = "videos/video3.mov"
+    path = "videos/video1.mov"
     capture = cv2.VideoCapture(path)
 
     width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
     fps = int(capture.get(cv2.CAP_PROP_FPS))
 
-    output = cv2.VideoWriter("annotated_videos/video3_annotated.mp4", cv2.VideoWriter_fourcc(*'mp4v'), fps, (width,height))
+    output = cv2.VideoWriter("annotated_videos/video1_annotated.mp4", cv2.VideoWriter_fourcc(*'mp4v'), fps, (width,height))
 
     ball_pos = []
     teams = []
@@ -67,62 +110,8 @@ def main():
         if not ret:
             break
 
-        if teams == []:
-            classifier = Detector(frame, model)
-        else:
-            classifier = Detector(frame, model, teams)
-
-        ball_pos += classifier.ball
-        classifier.annotate_img()
-        if teams == []:
-            teams = classifier.teams
-        team_assignments = classifier.assign_teams()
-
-        team0_ppositions = []
-        team1_ppositions = []
-
-        for team_id, players in team_assignments.items():
-            frame_positions = []
-            for player in players:
-                x = int((player[2]+player[0])//2)
-                y = int((player[3]+player[1])//2)
-                frame_positions.append([x,y])
-            team_positions[team_id].append(frame_positions)
-        
-
-
-
-
-        # for t0p, t1p in zip(team_assignments[0], team_assignments[1]):
-        #     t0x = int((t0p[2]+t0p[0])//2)
-        #     t0y = int((t0p[3]+t0p[1])//2)
-        #     team0_ppositions.append([t0x,t0y])
-
-        #     t1x = int((t1p[2]+t1p[0])//2)
-        #     t1y = int((t1p[3]+t1p[1])//2)
-        #     team1_ppositions.append([t1x,t1y])
-
-        # ball_pos += classifier.ball
-        # team_positions[0].append(team0_ppositions)
-        # team_positions[1].append(team1_ppositions)
-
-        team_speeds = calculate_speed(team_positions, fps)
-
-        for team_id, players in team_assignments.items():
-            for i, player in enumerate(players):
-                if i >= len(team_speeds[team_id]):
-                    print(f"skipping player {i} in team {team_id} due to incompatible speed data")
-                    continue
-                x = int((player[2]+player[0]) // 2)
-                y = int((player[3]+player[1]) // 2)
-                speed = team_speeds[team_id][i]
-                cv2.putText(classifier.img, f"{speed:.2f} px/s", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255),2)
-
-        classifier.annotate_img()
-        if teams == []:
-            teams = classifier.teams
-
-        output.write(classifier.img)
+        teams, team_positions, ball_pos, annotated_frame = process_frame(frame, model, teams, team_positions, ball_pos, fps)
+        output.write(annotated_frame)
 
     ball_pos = interpolate_ball_positions(ball_pos)
 
