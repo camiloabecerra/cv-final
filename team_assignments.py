@@ -15,7 +15,7 @@ class Detector:
             The input image on which object detection and team assignment will be performed.
         model : YOLO
             A YOLO detection model used to predict bounding boxes for players and the ball.
-        team_centroids : list (optional)
+        team_centroids : list
             A list of pre-computed team color centroids to classify players into teams. If empty, 
             team assignments will be inferred using K-Means clustering on the detected players.
         """
@@ -25,7 +25,7 @@ class Detector:
         # run object detection using YOLO
         self.detection = model.predict(self.img, conf=0.1)[0]
 
-        # store players and ball positions 
+        # store players and ball positions
         self.players = list(filter(lambda elt: self.detection.names[int(elt[5])] == "player", self.detection.boxes.data))
         self.ball = []
         for b in list(filter(lambda elt: self.detection.names[int(elt[5])] == "ball", self.detection.boxes.data)):
@@ -35,7 +35,7 @@ class Detector:
 
             self.ball.append(b)
 
-        # if more than two players are detected, assign the players into teams 
+        # if more than two players are detected, assign the players into teams
         if len(self.players) >= 2:
             self.team_players = self.assign_teams()
         else:
@@ -45,24 +45,25 @@ class Detector:
         """
         Assign detected players to two teams based on the average color within their bounding boxes.
 
-        If no team color centroids are provided, K-Means clustering is used to find two color-based clusters.
-        If centroids are provided, players are assigned to the closest centroid.
-
         Returns:
         --------
         dict
             A dictionary with two keys (0 and 1), each containing a list of player bounding boxes 
             assigned to that team.
         """
+        # compute average color of the bounding region for each player 
         avg_colors = list(map(lambda p: np.mean(self.img[int(p[1]):int(p[3]),int(p[0]):int(p[2])], axis=(0,1,2)), self.players))
 
         criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 50, 1.0)
+
+        # use k-menas to find two color clusters
         if len(self.teams) == 0:
             _,labels,self.teams = cv2.kmeans(np.float32(avg_colors), 2, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
             self.teams = [self.teams[0][0],self.teams[1][0]]
         else:
             labels = list(map(lambda x: 0 if math.dist([self.teams[0]],[x]) <= math.dist([self.teams[1]],[x]) else 1, avg_colors))
 
+        # separate players into two lists based on the assigned label
         team0 = []
         team1 = []
         for i in range(len(labels)):
@@ -76,7 +77,6 @@ class Detector:
     def annotate_img(self):
         """
         Draw ellipses on the detected objects (players/ball) to visually represent their location and team affiliation.
-        This method modifies the input image by adding these annotations.
         """
         for detection in self.detection.boxes.data:
             self.draw_bbox(detection)
@@ -84,10 +84,6 @@ class Detector:
     def draw_bbox(self, detection):
         """
         Draw an ellipse on the image to highlight a detected player or ball. The ellipse color indicates the team:
-        
-        - Blue: Team 0
-        - Green: Team 1
-        - Red: Not assigned or object other than a player (e.g., the ball)
 
         Parameters:
         -----------
