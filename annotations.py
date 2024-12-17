@@ -32,6 +32,22 @@ def interpolate_ball_positions(ball_positions):
     return ball_positions
 
 def calculate_speed(team_positions, fps):
+    """
+    Calculate the speed of players for each team across frames.
+
+    Parameters:
+    -----------
+    team_positions : dict
+        Dictionary containing player positions for each team across frames.
+    fps : int
+        Frames per second of the video.
+
+    Returns:
+    --------
+    dict
+        A dictionary containing the calculated speed (px/s) for each player in each team.
+        Example: {0: [speed1, speed2, ...], 1: [speed1, speed2, ...]}
+    """
     team_speeds = {0: [], 1: []}
     for team_id, positions in team_positions.items():
         speeds = []
@@ -48,6 +64,21 @@ def calculate_speed(team_positions, fps):
     return team_speeds
 
 def update_team_positions(team_positions, team_assignments):
+    """
+    Update player positions for each team in the current frame.
+
+    Parameters:
+    -----------
+    team_positions : dict
+        Dictionary to store cumulative player positions for each team.
+    team_assignments : dict
+        Dictionary containing the players detected in the current frame.
+
+    Returns:
+    --------
+    dict
+        Updated team positions with new frame data added.
+    """
     for team_id, players in team_assignments.items():
         frame_positions = []
         for player in players:
@@ -58,6 +89,23 @@ def update_team_positions(team_positions, team_assignments):
     return team_positions
 
 def annotate_speeds(frame, team_assignments, team_speeds):
+    """
+    Annotate the frame with the speeds of detected players.
+
+    Parameters:
+    -----------
+    frame : np.ndarray
+        Current video frame to annotate.
+    team_assignments : dict
+        Dictionary containing player bounding boxes for each team.
+    team_speeds : dict
+        Dictionary containing calculated player speeds for each team.
+
+    Returns:
+    --------
+    np.ndarray
+        Annotated frame with player speeds displayed.
+    """
     for team_id, players in team_assignments.items():
         for i, player in enumerate(players):
             if i >= len(team_speeds[team_id]):
@@ -70,6 +118,31 @@ def annotate_speeds(frame, team_assignments, team_speeds):
     return frame
 
 def process_frame(frame, model, teams, team_positions, ball_pos, fps):
+    """
+    Process a single video frame by detecting players, assigning teams, calculating speeds,
+    and annotating ball possession and speeds.
+
+    Parameters:
+    -----------
+    frame : np.ndarray
+        Current video frame to process.
+    model : YOLO
+        YOLO object detection model.
+    teams : list
+        List of team centroids.
+    team_positions : dict
+        Dictionary to store cumulative player positions for each team.
+    ball_pos : list
+        List to store cumulative ball positions.
+    fps : int
+        Frames per second of the video.
+
+    Returns:
+    --------
+    tuple
+        Updated teams, team_positions, ball_pos, and annotated frame.
+    """
+
     if teams == []:
             classifier = Detector(frame, model)
     else:
@@ -87,7 +160,6 @@ def process_frame(frame, model, teams, team_positions, ball_pos, fps):
     # update team positions to calculate speeds 
     team_positions = update_team_positions(team_positions, team_assignments)
     team_speeds = calculate_speed(team_positions, fps)
-    # print("HERE: ", classifier.ball)
 
     # assign ball possession 
     if classifier.ball:

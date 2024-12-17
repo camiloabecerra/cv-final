@@ -22,12 +22,6 @@ class PlayerBallAssigner():
 
             # find player closest to the ball 
             for team_id, player_arr in players.items():
-                print("team_id: ", team_id)
-                print("player_array: ", player_arr)
-                # if len(player_arr) < 2 or len(player_arr) % 2 != 0:
-                #     print(f"Skipping team {team_id} due to incomplete player data: {player_arr}")
-                #     continue
-
                 for player_pos in player_arr[-1]:
                     # measure distance between player and the ball
                     distance = self.measure_distance(player_pos, ball_pos)
