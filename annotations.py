@@ -76,25 +76,39 @@ def main():
         classifier.annotate_img()
         if teams == []:
             teams = classifier.teams
+        team_assignments = classifier.assign_teams()
 
         team0_ppositions = []
         team1_ppositions = []
-        for t0p, t1p in zip(classifier.assign_teams()[0], classifier.assign_teams()[1]):
-            t0x = int((t0p[2]+t0p[0])//2)
-            t0y = int((t0p[3]+t0p[1])//2)
-            team0_ppositions.append([t0x,t0y])
 
-            t1x = int((t1p[2]+t1p[0])//2)
-            t1y = int((t1p[3]+t1p[1])//2)
-            team1_ppositions.append([t1x,t1y])
+        for team_id, players in team_assignments.items():
+            frame_positions = []
+            for player in players:
+                x = int((player[2]+player[0])//2)
+                y = int((player[3]+player[1])//2)
+                frame_positions.append([x,y])
+            team_positions[team_id].append(frame_positions)
+        
 
-        ball_pos += classifier.ball
-        team_positions[0].append(team0_ppositions)
-        team_positions[1].append(team1_ppositions)
+
+
+
+        # for t0p, t1p in zip(team_assignments[0], team_assignments[1]):
+        #     t0x = int((t0p[2]+t0p[0])//2)
+        #     t0y = int((t0p[3]+t0p[1])//2)
+        #     team0_ppositions.append([t0x,t0y])
+
+        #     t1x = int((t1p[2]+t1p[0])//2)
+        #     t1y = int((t1p[3]+t1p[1])//2)
+        #     team1_ppositions.append([t1x,t1y])
+
+        # ball_pos += classifier.ball
+        # team_positions[0].append(team0_ppositions)
+        # team_positions[1].append(team1_ppositions)
 
         team_speeds = calculate_speed(team_positions, fps)
 
-        for team_id, players in enumerate(classifier.assign_teams()):
+        for team_id, players in team_assignments.items():
             for i, player in enumerate(players):
                 x = int((player[2]+player[0]) // 2)
                 y = int((player[3]+player[1]) // 2)
