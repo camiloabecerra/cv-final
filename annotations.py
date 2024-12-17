@@ -24,7 +24,7 @@ def interpolate_ball_positions(ball_positions):
     # interpolate missing values
     df_ball_positions = df_ball_positions.interpolate(method='linear').bfill()
 
-    ball_positions = df_ball_positions.to_nump().tolist()
+    ball_positions = df_ball_positions.to_numpy().tolist()
 
     return ball_positions
 
