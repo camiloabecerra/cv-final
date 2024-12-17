@@ -29,7 +29,7 @@ def interpolate_ball_positions(ball_positions):
     return ball_positions
 
 def main():
-    model = YOLO("finetuned.pt")
+    model = YOLO("yolo/finetuned.pt")
     path = "videos/video3.mov"
     capture = cv2.VideoCapture(path)
 
@@ -78,7 +78,6 @@ def main():
         output.write(classifier.img)
 
     ball_pos = interpolate_ball_positions(ball_pos)
-    print(ball_pos)
 
     capture.release()
     output.release()
