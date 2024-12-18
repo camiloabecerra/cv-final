@@ -28,21 +28,56 @@ def interpolate_ball_positions(ball_positions):
 
     return ball_positions
 
-def calculate_speed(team_positions, fps):
-    team_speeds = {0: [], 1: []}
+def measure_distance(pos1, pos2):
+    return ((pos2[0]-pos1[0])**2 + (pos2[1]-pos1[1])**2)**0.5
+
+def calculate_speed(team_positions, fps, frame_window=5):
+    team_speeds = {0: {}, 1: {}}
     for team_id, positions in team_positions.items():
-        speeds = []
-        for player_positions in zip(*positions):
-            total_distance = 0
-            for i in range(1, len(player_positions)):
-                x1, y1 = player_positions[i-1]
-                x2, y2 = player_positions[i]
-                distance = np.sqrt((x2-x1)**2 + (y2-y1)**2)
-                total_distance += distance
-            speed = (total_distance / len(player_positions)) * fps if len(player_positions) > 1 else 0
-            speeds.append(speed)
-        team_speeds[team_id] = speeds
-    return team_speeds
+        if len(positions) < 2:
+            continue
+        for frame in range(1, len(positions)):
+            curr_positions = positions[frame]
+            prev_positions = positions[frame-1]
+            for player, (curr_pos, prev_pos) in enumerate(zip(curr_positions, prev_positions)):
+                if curr_pos is None or prev_pos is None:
+                    continue
+                distance = measure_distance(prev_pos, curr_pos)
+                time_elapsed = 1/fps
+                speed_mps = distance / time_elapsed
+                speed_kph = speed_mps * 3.6
+
+                if player not in team_speeds[team_id]:
+                    team_speeds[team_id][player] = []
+                team_speeds[team_id][player].append(speed_kph)
+
+                if len(team_speeds[team_id][player]) > frame_window:
+                    team_speeds[team_id][player].pop(0)
+
+                if frame % frame_window == 0:
+                    avg_speed = sum(team_speeds[team_id][player])/len(team_speeds[team_id][player])
+                else:
+                    avg_speed = curr_positions[player][2] if len(curr_positions[player]) > 2 else None
+
+                if len(curr_positions[player]) < 3:
+                    curr_positions[player].append(None)
+                curr_positions[player][2] = avg_speed
+    return team_positions
+
+
+
+
+    #     for player_positions in zip(*positions):
+    #         total_distance = 0
+    #         for i in range(1, len(player_positions)):
+    #             x1, y1 = player_positions[i-1]
+    #             x2, y2 = player_positions[i]
+    #             distance = np.sqrt((x2-x1)**2 + (y2-y1)**2)
+    #             total_distance += distance
+    #         speed = (total_distance / len(player_positions)) * fps if len(player_positions) > 1 else 0
+    #         speeds.append(speed)
+    #     team_speeds[team_id] = speeds
+    # return team_speeds
 
 
 
@@ -106,17 +141,18 @@ def main():
         # team_positions[0].append(team0_ppositions)
         # team_positions[1].append(team1_ppositions)
 
-        team_speeds = calculate_speed(team_positions, fps)
+        team_positions = calculate_speed(team_positions, fps, frame_window=5)
 
         for team_id, players in team_assignments.items():
             for i, player in enumerate(players):
-                if i >= len(team_speeds[team_id]):
-                    print(f"skipping player {i} in team {team_id} due to incompatible speed data")
+                if i >= len(team_positions[team_id][-1]):
+                    # print(f"skipping player {i} in team {team_id} due to incompatible speed data")
                     continue
                 x = int((player[2]+player[0]) // 2)
                 y = int((player[3]+player[1]) // 2)
-                speed = team_speeds[team_id][i]
-                cv2.putText(classifier.img, f"{speed:.2f} px/s", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255),2)
+                speed = team_positions[team_id][-1][i][2]
+                if speed is not None:
+                    cv2.putText(classifier.img, f"{speed:.2f} km/h", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255),2)
 
         classifier.annotate_img()
         if teams == []:
