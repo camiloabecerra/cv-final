@@ -197,25 +197,25 @@ def process_frame(frame, model, teams, team_positions, ball_pos, fps):
     # team_positions = update_team_positions(team_positions, team_assignments)
     team_positions = calculate_speed(team_positions, fps, frame_window=5)
 
-    # assign ball possession 
-    if classifier.ball:
-        assigner = PlayerBallAssigner()
-        assignments = assigner.assign_ball_to_player(team_positions, classifier.ball)
+    # # assign ball possession 
+    # if classifier.ball:
+    #     assigner = PlayerBallAssigner()
+    #     assignments = assigner.assign_ball_to_player(team_positions, classifier.ball)
 
-        for ball_id, team_id in assignments.items():
-            if team_id != -1:
-                # Annotate possession on the frame
-                x = int(classifier.ball[ball_id][0])
-                y = int(classifier.ball[ball_id][1])
-                cv2.putText(
-                    classifier.img,
-                    f"Ball {ball_id}: Team {team_id}",
-                    (x, y - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.5,
-                    (0, 255, 0),  # Green text
-                    2,
-                )
+    #     for ball_id, team_id in assignments.items():
+    #         if team_id != -1:
+    #             # Annotate possession on the frame
+    #             x = int(classifier.ball[ball_id][0])
+    #             y = int(classifier.ball[ball_id][1])
+    #             cv2.putText(
+    #                 classifier.img,
+    #                 f"Ball {ball_id}: Team {team_id}",
+    #                 (x, y - 10),
+    #                 cv2.FONT_HERSHEY_SIMPLEX,
+    #                 0.5,
+    #                 (0, 255, 0),  # Green text
+    #                 2,
+    #             )
 
     # annotate speeds on each frame 
     frame = annotate_speeds(classifier.img, team_assignments, team_positions)
@@ -247,7 +247,7 @@ def main():
         teams, team_positions, ball_pos, annotated_frame = process_frame(frame, model, teams, team_positions, ball_pos, fps)
         output.write(annotated_frame)
 
-    ball_pos = interpolate_ball_positions(ball_pos)
+    # ball_pos = interpolate_ball_positions(ball_pos)
 
     capture.release()
     output.release()
