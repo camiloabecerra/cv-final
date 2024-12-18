@@ -116,8 +116,9 @@ def annotate_speeds(frame, team_assignments, team_speeds):
             speed = team_speeds[team_id][i]
             cv2.putText(frame, f"{speed:.2f} px/s", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255),2)
     return frame
+    
 
-def process_frame(frame, model, teams, team_positions, ball_pos, fps):
+def process_frame(frame, model, teams, team_positions, ball_pos, fps, total_frames):
     """
     Process a single video frame by detecting players, assigning teams, calculating speeds,
     and annotating ball possession and speeds.
@@ -142,7 +143,7 @@ def process_frame(frame, model, teams, team_positions, ball_pos, fps):
     tuple
         Updated teams, team_positions, ball_pos, and annotated frame.
     """
-
+    ball_assigner = PlayerBallAssigner()
     if teams == []:
             classifier = Detector(frame, model)
     else:
@@ -161,27 +162,7 @@ def process_frame(frame, model, teams, team_positions, ball_pos, fps):
     team_positions = update_team_positions(team_positions, team_assignments)
     team_speeds = calculate_speed(team_positions, fps)
 
-    # assign ball possession 
-    if classifier.ball:
-        assigner = PlayerBallAssigner()
-        assignments = assigner.assign_ball_to_player(team_positions, classifier.ball)
-
-        for ball_id, team_id in assignments.items():
-            if team_id != -1:
-                # Annotate possession on the frame
-                x = int(classifier.ball[ball_id][0])
-                y = int(classifier.ball[ball_id][1])
-                cv2.putText(
-                    classifier.img,
-                    f"Ball {ball_id}: Team {team_id}",
-                    (x, y - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.5,
-                    (0, 255, 0),  # Green text
-                    2,
-                )
-
-    # annotate speeds on each frame 
+    # annotate speeds on each frame
     frame = annotate_speeds(classifier.img, team_assignments, team_speeds)
 
     classifier.annotate_img()
@@ -189,6 +170,7 @@ def process_frame(frame, model, teams, team_positions, ball_pos, fps):
 
 
 def main():
+    ball_assigner = PlayerBallAssigner()
     model = YOLO("yolo/finetuned.pt")
     path = "videos/video1.mov"
     capture = cv2.VideoCapture(path)
@@ -202,16 +184,27 @@ def main():
     ball_pos = []
     teams = []
     team_positions = {0:[],1:[]}
+    total_frames = 0 
 
     while capture.isOpened():
         ret, frame = capture.read()
         if not ret:
             break
 
-        teams, team_positions, ball_pos, annotated_frame = process_frame(frame, model, teams, team_positions, ball_pos, fps)
+        total_frames += 1
+        teams, team_positions, ball_pos, annotated_frame = process_frame(frame, model, teams, team_positions, ball_pos, fps, total_frames)
+
+        # assign ball posession
+        if ball_pos:
+            ball_assigner.assign_ball_to_team(team_positions, ball_pos)
+
         output.write(annotated_frame)
 
     ball_pos = interpolate_ball_positions(ball_pos)
+    team_possession_percentages = ball_assigner.team_ball_possession(total_frames);
+    print("Team Ball Acquisition Percentages:")
+    for team_id, percentage in team_possession_percentages.items():
+        print(f"Team {team_id}: {percentage:.2f}%")
 
     capture.release()
     output.release()
