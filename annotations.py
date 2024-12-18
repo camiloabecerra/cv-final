@@ -1,8 +1,11 @@
 from ultralytics import YOLO
 import cv2
 import pandas as pd
-from team_assignments import Detector
 import numpy as np
+
+from team_assignments import Detector
+from ball_assignments import PlayerBallAssigner
+
 
 def interpolate_ball_positions(ball_positions):
     """
@@ -28,11 +31,24 @@ def interpolate_ball_positions(ball_positions):
 
     return ball_positions
 
-def measure_distance(pos1, pos2):
-    return ((pos2[0]-pos1[0])**2 + (pos2[1]-pos1[1])**2)**0.5
+def calculate_speed(team_positions, fps):
+    """
+    Calculate the speed of players for each team across frames.
 
-def calculate_speed(team_positions, fps, frame_window=5):
-    team_speeds = {0: {}, 1: {}}
+    Parameters:
+    -----------
+    team_positions : dict
+        Dictionary containing player positions for each team across frames.
+    fps : int
+        Frames per second of the video.
+
+    Returns:
+    --------
+    dict
+        A dictionary containing the calculated speed (px/s) for each player in each team.
+        Example: {0: [speed1, speed2, ...], 1: [speed1, speed2, ...]}
+    """
+    team_speeds = {0: [], 1: []}
     for team_id, positions in team_positions.items():
         if len(positions) < 2:
             continue
@@ -79,19 +95,141 @@ def calculate_speed(team_positions, fps, frame_window=5):
     #     team_speeds[team_id] = speeds
     # return team_speeds
 
+def update_team_positions(team_positions, team_assignments):
+    """
+    Update player positions for each team in the current frame.
 
+    Parameters:
+    -----------
+    team_positions : dict
+        Dictionary to store cumulative player positions for each team.
+    team_assignments : dict
+        Dictionary containing the players detected in the current frame.
+
+    Returns:
+    --------
+    dict
+        Updated team positions with new frame data added.
+    """
+    for team_id, players in team_assignments.items():
+        frame_positions = []
+        for player in players:
+            x = int((player[2]+player[0])//2)
+            y = int((player[3]+player[1])//2)
+            frame_positions.append([x,y])
+        team_positions[team_id].append(frame_positions)
+    return team_positions
+
+def annotate_speeds(frame, team_assignments, team_speeds):
+    """
+    Annotate the frame with the speeds of detected players.
+
+    Parameters:
+    -----------
+    frame : np.ndarray
+        Current video frame to annotate.
+    team_assignments : dict
+        Dictionary containing player bounding boxes for each team.
+    team_speeds : dict
+        Dictionary containing calculated player speeds for each team.
+
+    Returns:
+    --------
+    np.ndarray
+        Annotated frame with player speeds displayed.
+    """
+    for team_id, players in team_assignments.items():
+        for i, player in enumerate(players):
+            if i >= len(team_speeds[team_id]):
+                print(f"skipping player {i} in team {team_id} due to incompatible speed data")
+                continue
+            x = int((player[2]+player[0]) // 2)
+            y = int((player[3]+player[1]) // 2)
+            speed = team_speeds[team_id][i]
+            cv2.putText(frame, f"{speed:.2f} px/s", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255),2)
+    return frame
+
+def process_frame(frame, model, teams, team_positions, ball_pos, fps):
+    """
+    Process a single video frame by detecting players, assigning teams, calculating speeds,
+    and annotating ball possession and speeds.
+
+    Parameters:
+    -----------
+    frame : np.ndarray
+        Current video frame to process.
+    model : YOLO
+        YOLO object detection model.
+    teams : list
+        List of team centroids.
+    team_positions : dict
+        Dictionary to store cumulative player positions for each team.
+    ball_pos : list
+        List to store cumulative ball positions.
+    fps : int
+        Frames per second of the video.
+
+    Returns:
+    --------
+    tuple
+        Updated teams, team_positions, ball_pos, and annotated frame.
+    """
+
+    if teams == []:
+            classifier = Detector(frame, model)
+    else:
+        classifier = Detector(frame, model, teams)
+
+    # update ball positions
+    ball_pos += classifier.ball
+
+    # assign team if not already assigned
+    if not teams:
+        teams = classifier.teams
+    
+    team_assignments = classifier.assign_teams()
+
+    # update team positions to calculate speeds 
+    team_positions = update_team_positions(team_positions, team_assignments)
+    team_speeds = calculate_speed(team_positions, fps)
+
+    # assign ball possession 
+    if classifier.ball:
+        assigner = PlayerBallAssigner()
+        assignments = assigner.assign_ball_to_player(team_positions, classifier.ball)
+
+        for ball_id, team_id in assignments.items():
+            if team_id != -1:
+                # Annotate possession on the frame
+                x = int(classifier.ball[ball_id][0])
+                y = int(classifier.ball[ball_id][1])
+                cv2.putText(
+                    classifier.img,
+                    f"Ball {ball_id}: Team {team_id}",
+                    (x, y - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    (0, 255, 0),  # Green text
+                    2,
+                )
+
+    # annotate speeds on each frame 
+    frame = annotate_speeds(classifier.img, team_assignments, team_speeds)
+
+    classifier.annotate_img()
+    return teams, team_positions, ball_pos, classifier.img
 
 
 def main():
     model = YOLO("yolo/finetuned.pt")
-    path = "videos/video3.mov"
+    path = "videos/video1.mov"
     capture = cv2.VideoCapture(path)
 
     width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
     fps = int(capture.get(cv2.CAP_PROP_FPS))
 
-    output = cv2.VideoWriter("annotated_videos/video3_annotated.mp4", cv2.VideoWriter_fourcc(*'mp4v'), fps, (width,height))
+    output = cv2.VideoWriter("annotated_videos/video1_annotated.mp4", cv2.VideoWriter_fourcc(*'mp4v'), fps, (width,height))
 
     ball_pos = []
     teams = []
@@ -102,63 +240,8 @@ def main():
         if not ret:
             break
 
-        if teams == []:
-            classifier = Detector(frame, model)
-        else:
-            classifier = Detector(frame, model, teams)
-
-        ball_pos += classifier.ball
-        classifier.annotate_img()
-        if teams == []:
-            teams = classifier.teams
-        team_assignments = classifier.assign_teams()
-
-        team0_ppositions = []
-        team1_ppositions = []
-
-        for team_id, players in team_assignments.items():
-            frame_positions = []
-            for player in players:
-                x = int((player[2]+player[0])//2)
-                y = int((player[3]+player[1])//2)
-                frame_positions.append([x,y])
-            team_positions[team_id].append(frame_positions)
-        
-
-
-
-
-        # for t0p, t1p in zip(team_assignments[0], team_assignments[1]):
-        #     t0x = int((t0p[2]+t0p[0])//2)
-        #     t0y = int((t0p[3]+t0p[1])//2)
-        #     team0_ppositions.append([t0x,t0y])
-
-        #     t1x = int((t1p[2]+t1p[0])//2)
-        #     t1y = int((t1p[3]+t1p[1])//2)
-        #     team1_ppositions.append([t1x,t1y])
-
-        # ball_pos += classifier.ball
-        # team_positions[0].append(team0_ppositions)
-        # team_positions[1].append(team1_ppositions)
-
-        team_positions = calculate_speed(team_positions, fps, frame_window=5)
-
-        for team_id, players in team_assignments.items():
-            for i, player in enumerate(players):
-                if i >= len(team_positions[team_id][-1]):
-                    # print(f"skipping player {i} in team {team_id} due to incompatible speed data")
-                    continue
-                x = int((player[2]+player[0]) // 2)
-                y = int((player[3]+player[1]) // 2)
-                speed = team_positions[team_id][-1][i][2]
-                if speed is not None:
-                    cv2.putText(classifier.img, f"{speed:.2f} km/h", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255),2)
-
-        classifier.annotate_img()
-        if teams == []:
-            teams = classifier.teams
-
-        output.write(classifier.img)
+        teams, team_positions, ball_pos, annotated_frame = process_frame(frame, model, teams, team_positions, ball_pos, fps)
+        output.write(annotated_frame)
 
     ball_pos = interpolate_ball_positions(ball_pos)
 
