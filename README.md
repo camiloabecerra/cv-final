@@ -6,6 +6,8 @@ Seyoung Jang, Camilo Becerra, Javier Nino-Sears
 ## Overview
 Our project focuses on developing a real-time soccer match analysis program using the You Only Look Once (YOLO) AI object detection model. We fine-tune the model to improve its accuracy in tracking players, referees, and the ball. Then, we assign the players to teams based on colors of their uniforms using K-means clustering at pixel level. With this information, we measure each team's ball acquisition percentage in a match. 
 
+A detailed report about the project's methodology and results can be found in Final project report pdf file.
+
 ### Dataset
 We acquired data to train our YOLO model from the [Football Players Detection dataset](https://universe.roboflow.com/roboflow-jvuqo/football-players-detection-3zvbc/dataset/2) hosted by Roboflow. This dataset consists of 600+ annotated images captured during football games, with bounding boxes labeling individual players on the field, enabling precise localization of players within the frame. 
 
