@@ -49,7 +49,6 @@ class PlayerBallAssigner():
         """
         min_distance = float("inf")
         assigned_team = -1
-        # print("BALL POSITIONS: ", ball_position)
 
         # find player closest to the ball 
         for team_id, player_arr in players.items():

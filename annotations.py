@@ -83,21 +83,6 @@ def calculate_speed(team_positions, fps, frame_window=5):
                 curr_positions[player][2] = avg_speed
     return team_positions
 
-
-
-
-    #     for player_positions in zip(*positions):
-    #         total_distance = 0
-    #         for i in range(1, len(player_positions)):
-    #             x1, y1 = player_positions[i-1]
-    #             x2, y2 = player_positions[i]
-    #             distance = np.sqrt((x2-x1)**2 + (y2-y1)**2)
-    #             total_distance += distance
-    #         speed = (total_distance / len(player_positions)) * fps if len(player_positions) > 1 else 0
-    #         speeds.append(speed)
-    #     team_speeds[team_id] = speeds
-    # return team_speeds
-
 def update_team_positions(team_positions, team_assignments):
     """
     Update player positions for each team in the current frame.
@@ -198,10 +183,6 @@ def process_frame(frame, model, teams, team_positions, ball_pos, fps, total_fram
     # team_positions = update_team_positions(team_positions, team_assignments)
     team_positions = calculate_speed(team_positions, fps, frame_window=5)
 
-<<<<<<< HEAD
-    # annotate speeds on each frame
-    frame = annotate_speeds(classifier.img, team_assignments, team_speeds)
-=======
     # assign ball possession 
     if classifier.ball:
         assigner = PlayerBallAssigner()
@@ -224,7 +205,6 @@ def process_frame(frame, model, teams, team_positions, ball_pos, fps, total_fram
 
     # annotate speeds on each frame 
     frame = annotate_speeds(classifier.img, team_assignments, team_positions)
->>>>>>> 5596fc36069039a065e715b0a1c111e8b33cee66
 
     classifier.annotate_img()
     return teams, team_positions, ball_pos, classifier.img
